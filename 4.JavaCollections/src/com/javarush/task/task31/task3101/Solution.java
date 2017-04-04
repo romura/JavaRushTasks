@@ -1,86 +1,57 @@
 package com.javarush.task.task31.task3101;
 
+
+
+
 import java.io.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.Comparator;
+
 
 /*
 Проход по дереву файлов
 */
 public class Solution {
-    static List<File> listOfFiles = new ArrayList<>();
+    public static void main(String[] args) throws IOException {
+        final ArrayList<File> list = new ArrayList<>();//
+        File path = new File(args[0]);//
+        File resultFileAbsolutePath = new File(args[1]);//
+        File allFilesContent = new File(resultFileAbsolutePath.getParent() + "/allFilesContent.txt");//
 
-    public static void main(String[] args) {
-        File path = new File(args[0]);
-        File resultFileAbsolutePath = new File(args[1]);
-
-        File resultFile = new File(resultFileAbsolutePath.getParent() + "/" + "allFilesContent.txt");
-        FileUtils.renameFile(resultFileAbsolutePath, resultFile);
-
-        BufferedWriter bufferedWriter = null;
-        try {
-            bufferedWriter = new BufferedWriter(new FileWriter(resultFile));
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        addFilesToList(path);
-
-        List<File> bufferListOfFiles = new ArrayList<>();
-        for (File file : listOfFiles){
-            bufferListOfFiles.add(file);
-        }
-
-        for (File file : listOfFiles){
-            if (file.length() > 50){
-                deleteFile(file);
-                bufferListOfFiles.remove(file);
-            }
-        }
-        listOfFiles = bufferListOfFiles;
-
-        Collections.sort(listOfFiles);
-
-        for (File file : listOfFiles){
-            try {
-                BufferedReader reader = new BufferedReader(new FileReader(file));
-                while(reader.ready()){
-                    bufferedWriter.write(reader.read());
+        try (FileOutputStream writer = new FileOutputStream(allFilesContent);)// поток записи
+        {
+            FileUtils.renameFile(resultFileAbsolutePath, allFilesContent);//
+            Files.walkFileTree(path.toPath(), new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    if (file.toFile().length() > 50) FileUtils.deleteFile(file.toFile());
+                    else list.add(file.toFile());
+                    return FileVisitResult.CONTINUE;
                 }
-                bufferedWriter.write(System.lineSeparator());
+            });
+            Collections.sort(list, new Comparator<File>() {
+                @Override
+                public int compare(File o1, File o2) {
+                    return o1.getName().compareTo(o2.getName());
+                }
+            });
+            for (File file : list) {
+                FileReader reader = new FileReader(file);
+                while (reader.ready()) writer.write(reader.read());
                 reader.close();
-            } catch (Exception e) {
-                e.printStackTrace();
+                writer.write("\n".getBytes());
             }
+            writer.close();
         }
-
-        try {
-            bufferedWriter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
     }
 
     public static void deleteFile(File file) {
         if (!file.delete()) System.out.println("Can not delete file with name " + file.getName());
-    }
-
-    public static void addFilesToList(File path){
-        if (!path.exists() && path == null){
-            return;
-        }
-
-        if (path.isFile()){
-            listOfFiles.add(path);
-        }
-        else{
-            for(File files : path.listFiles()){
-                addFilesToList(files);
-            }
-        }
     }
 }
